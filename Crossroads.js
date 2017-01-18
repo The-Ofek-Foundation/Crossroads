@@ -501,7 +501,7 @@ function mctsSimulate(father, tboard, tscores) {
 
 function mctsPlayNextMove(tboard, tscores, lastMove, dTurn) {
 	var result = playMove(tboard, lastMove, dTurn);
-	if (result !== -1)
+	if (result !== -1 && result !== 4)
 		tscores[result]++;
 }
 
