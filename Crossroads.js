@@ -1,8 +1,10 @@
 var docWidth, docHeight;
 var boardWidth, squareWidth;
-var board;
-var globalTurn;
+var board, scores;
+var globalTurn, playingTurn;
 var numPlayers = 2;
+var over;
+var omniscientView = true;
 
 var boardui = getElemId("board");
 var brush = boardui.getContext("2d");
@@ -39,10 +41,18 @@ function newGame() {
 	for (var i = 0; i < board.length; i++) {
 		board[i] = new Array(5);
 		for (var a = 0; a < board[i].length; a++)
-			board[i][a] = 0;
+			board[i][a] = -1;
 	}
+
+	board[0][1] = board[4][3] = 4;
+
+	scores = new Array(numPlayers);
+	for (var i = 0; i < scores.length; i++)
+		scores[i] = 0;
+
 	hoveredMove = [[-1, -1], -1];
-	globalTurn = 0;
+	globalTurn = playingTurn = 0;
+	over = false;
 
 	drawBoard();
 }
@@ -186,24 +196,26 @@ function drawInnerBoard() {
 	brush.closePath();
 }
 
-function drawHover(hover) {
+function drawPiece(x, y, turn) {
 	brush.beginPath();
-	brush.arc((hover[0][0] + 0.5) * squareWidth,
-		(hover[0][1] + 0.5) * squareWidth, 2 * squareWidth / 5,
-		0, 2 * Math.PI);
+	brush.arc((x + 0.5) * squareWidth, (y + 0.5) * squareWidth,
+		2 * squareWidth / 5, 0, 2 * Math.PI);
 
-	switch (globalTurn) {
+	switch (turn) {
 		case 0:
 			brush.fillStyle = 'red';
 			break;
 		case 1:
-			brush.fillStyle = 'green';
-			break;
-		case 2:
 			brush.fillStyle = 'blue';
 			break;
-		case 3:
+		case 2:
 			brush.fillStyle = 'yellow';
+			break;
+		case 3:
+			brush.fillStyle = 'lightgray';
+			break;
+		case 4:
+			brush.fillStyle = 'green';
 			break;
 	}
 
@@ -213,12 +225,55 @@ function drawHover(hover) {
 	brush.fill();
 }
 
+function drawPieces() {
+	for (var i = 0; i < board.length; i++)
+		for (var a = 0; a < board[i].length; a++)
+			if (board[i][a] !== -1)
+				drawPiece(i + 1, a + 1, board[i][a]);
+}
+
 function drawBoard(hover=[[-1, -1], -1]) {
 	clearBoard();
+	if (omniscientView)
+		drawPieces();
 	drawOuterBoard();
 	drawInnerBoard();
 	if (hover[1] !== -1)
-		drawHover(hover);
+		drawPiece(hover[0][0], hover[0][1], globalTurn);
+}
+
+function playMove(tboard, tmove, turn) {
+	var tempturn;
+	switch (tmove[1]) {
+		case 0:
+			for (var i = 0; turn !== -1 && i < 4; i++, turn = tempturn) {
+				tempturn = board[i][1];
+				board[i][1] = turn;
+			}
+			return turn;
+		case 1:
+			for (var a = 0; turn !== -1 && a < 4; a++, turn = tempturn) {
+				tempturn = board[3][a];
+				board[3][a] = turn;
+			}
+			return turn;
+		case 2:
+			for (var i = 4; turn !== -1 && i > 0; i--, turn = tempturn) {
+				tempturn = tboard[i][3];
+				tboard[i][3] = turn;
+			}
+			return turn;
+		case 3:
+			for (var a = 4; turn !== -1 && a > 0; a--, turn = tempturn) {
+				tempturn = tboard[1][a];
+				tboard[1][a] = turn;
+			}
+			return turn;
+	}
+}
+
+function incrementTurn(move) {
+	globalTurn = playingTurn = (globalTurn + 1) % numPlayers;
 }
 
 function getMove(mouseX, mouseY) {
@@ -234,6 +289,32 @@ function getMove(mouseX, mouseY) {
 		return [tmove, 3];
 	return [[-1, -1], -1];
 }
+
+boardui.addEventListener('mousedown', function (e) {
+	if (e.which === 3)
+		return;
+	if (over) {
+		alert("The game is already over!");
+		return;
+	}
+	var move = getMove(e.pageX - wrapperLeft, e.pageY - wrapperTop);
+	if (move[1] === -1)
+		return;
+
+	hoveredMove = [[-1, -1], -1];
+	var result = playMove(board, move, playingTurn);
+	if (result === 4)
+		playingTurn = 4;
+	else {
+		if (result !== -1)
+			scores[result]++;
+		incrementTurn(move);
+	}
+	console.log(scores);
+
+	e.preventDefault();
+	drawBoard();
+});
 
 boardui.addEventListener('mousemove', function (e) {
 	var move = getMove(e.pageX - wrapperLeft, e.pageY - wrapperTop);
