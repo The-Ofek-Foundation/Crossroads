@@ -517,9 +517,6 @@ document.addEventListener('keypress', function (event) {
 });
 
 function mctsGetChildren(parent, tboard, turn) {
-	if (parent.result !== 10)
-		return [];
-
 	var children = new Array(4),
 		nextTurn = (turn + 1) % numPlayers;
 
@@ -620,10 +617,7 @@ class MctsNode {
 						mctsChildPotential(this.children[0],
 							this.totalTries, this.turn), potential;
 
-				// propResult(this, this.children[0]);
-
 				for (i = 1; i < this.children.length; i++) {
-					// propResult(this, this.children[i]);
 					potential = mctsChildPotential(this.children[i], this.totalTries, this.turn);
 					if (potential > bestPotential) {
 						bestPotential = potential;
