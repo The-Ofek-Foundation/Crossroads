@@ -2,12 +2,18 @@ var docWidth, docHeight;
 var boardWidth, squareWidth;
 var board, scores;
 var globalTurn, playingTurn;
-var numPlayers = 4;
+var numPlayers = 2;
 var over;
 var omniscientView = true;
+var timeToThink = 1;
+var aiTurn = 1;
+
+var globalRoot;
+var expansionConstant = 1.5;
 
 var boardui = getElemId("board");
 var brush = boardui.getContext("2d");
+var brushX, brushY;
 var hoveredMove;
 
 function pageReady() {
@@ -53,6 +59,7 @@ function newGame() {
 	hoveredMove = [[-1, -1], -1];
 	globalTurn = playingTurn = 0;
 	over = false;
+	globalRoot = createMctsRoot();
 
 	drawBoard();
 }
@@ -63,7 +70,6 @@ function clearBoard() {
 	brush.fillRect(0, 0, boardWidth, boardWidth);
 }
 
-var brushX, brushY;
 function brushMove(x, y) {
 	x *= squareWidth;
 	y *= squareWidth;
@@ -303,17 +309,17 @@ function drawBoard(hover=[[-1, -1], -1]) {
 
 function playMove(tboard, tmove, turn) {
 	var tempturn;
-	switch (tmove[1]) {
+	switch (tmove) {
 		case 0:
 			for (var i = 0; turn !== -1 && i < 4; i++, turn = tempturn) {
-				tempturn = board[i][1];
-				board[i][1] = turn;
+				tempturn = tboard[i][1];
+				tboard[i][1] = turn;
 			}
 			return turn;
 		case 1:
 			for (var a = 0; turn !== -1 && a < 4; a++, turn = tempturn) {
-				tempturn = board[3][a];
-				board[3][a] = turn;
+				tempturn = tboard[3][a];
+				tboard[3][a] = turn;
 			}
 			return turn;
 		case 2:
@@ -331,7 +337,25 @@ function playMove(tboard, tmove, turn) {
 	}
 }
 
-function incrementTurn(move) {
+function getResult(tboard, tmove) {
+	var turn = -2;
+	switch (tmove) {
+		case 0:
+			for (var i = 0; turn !== -1 && i < 4; i++, turn = tboard[i][1]);
+			return turn;
+		case 1:
+			for (var a = 0; turn !== -1 && a < 4; a++, turn = tboard[3][a]);
+			return turn;
+		case 2:
+			for (var i = 4; turn !== -1 && i > 0; i--, turn = tboard[i][3]);
+			return turn;
+		case 3:
+			for (var a = 4; turn !== -1 && a > 0; a--, turn = tboard[1][a]);
+			return turn;
+	}
+}
+
+function incrementTurn() {
 	globalTurn = playingTurn = (globalTurn + 1) % numPlayers;
 }
 
@@ -349,17 +373,7 @@ function getMove(mouseX, mouseY) {
 	return [[-1, -1], -1];
 }
 
-boardui.addEventListener('mousedown', function (e) {
-	if (e.which === 3)
-		return;
-	if (over) {
-		alert("The game is already over!");
-		return;
-	}
-	var move = getMove(e.pageX - wrapperLeft, e.pageY - wrapperTop);
-	if (move[1] === -1)
-		return;
-
+function playMoveGlobal(move) {
 	hoveredMove = [[-1, -1], -1];
 	var result = playMove(board, move, playingTurn);
 	if (result === 4)
@@ -388,9 +402,27 @@ boardui.addEventListener('mousedown', function (e) {
 		}
 		incrementTurn(move);
 	}
+	globalRoot = mctsGetNextRoot(move);
+	if (!over && aiTurn !== 'none' &&
+		(globalTurn === aiTurn || aiTurn === 'all'))
+		setTimeout(playAiMove, 25);
+	drawBoard();
+}
+
+boardui.addEventListener('mousedown', function (e) {
+	if (e.which === 3)
+		return;
+	if (over) {
+		alert("The game is already over!");
+		return;
+	}
+	var move = getMove(e.pageX - wrapperLeft, e.pageY - wrapperTop);
+	if (move[1] === -1)
+		return;
+
+	playMoveGlobal(move[1]);
 
 	e.preventDefault();
-	drawBoard();
 });
 
 boardui.addEventListener('mousemove', function (e) {
@@ -411,3 +443,206 @@ document.addEventListener('keypress', function (event) {
 			break;
 	}
 });
+
+function mctsGetChildren(parent, tboard, turn) {
+	if (parent.result !== 10)
+		return [];
+
+	var children = new Array(4),
+		nextTurn = (turn + 1) % numPlayers;
+
+	for (var i = 0; i < children.length; i++)
+		if (getResult(tboard, i) === 4)
+			children[i] = new MctsNode(parent, turn, 4, i);
+		else children[i] = new MctsNode(parent, nextTurn, nextTurn, i);
+
+	return children; // if ransom is paid
+}
+
+function createMctsRoot() {
+	return new MctsNode(null, globalTurn, playingTurn, -1);
+}
+
+function mctsSimulate(father, tboard, tscores) {
+	if (father.result !== 10)
+		return father.result;
+
+	var turn = father.turn;
+
+	for (var i = 0; i < tscores.length; i++)
+		if (tscores[i] === 5)
+			return father.result = i === turn ? 1:-1;
+
+	var dTurn = father.dTurn, result;
+
+	while (1 == 1) {
+		result = playMove(tboard, parseInt(Math.random() * 4), dTurn);
+		if (result === 4)
+			dTurn = 4;
+		else {
+			if (result !== -1) {
+				tscores[result]++;
+				if (tscores[result] === 5)
+					return result === father.turn ? 1:-1;
+			}
+			turn = dTurn = (turn + 1) % numPlayers;
+		}
+	}
+}
+
+function mctsPlayNextMove(tboard, tscores, lastMove, dTurn) {
+	var result = playMove(tboard, lastMove, dTurn);
+	if (result !== -1)
+		tscores[result]++;
+}
+
+class MctsNode {
+	constructor(parent, turn, dTurn, lastMove) {
+		this.parent = parent;
+		this.turn = turn;
+		this.dTurn = dTurn; // playingTurn
+		this.lastMove = lastMove;
+		this.hits = 0;
+		this.misses = 0;
+		this.totalTries = 0;
+		this.hasChildren = false;
+		this.children = [];
+		this.result = 10; // never gonna happen
+		this.countUnexplored = 0;
+	}
+
+	chooseChild(tboard, tscores) {
+		if (this.hasChildren === false) {
+			this.hasChildren = true;
+			this.children = mctsGetChildren(this, tboard, this.turn);
+			this.countUnexplored = this.children.length;
+		}
+		if (this.result !== 10) // leaf node
+			this.backPropogate(this.result);
+		else {
+			var unexplored = this.countUnexplored;
+			var i;
+
+			if (unexplored > 0) {
+				this.countUnexplored--;
+				var ran = Math.floor(Math.random() * unexplored);
+				for (i = 0; i < this.children.length; i++)
+					if (this.children[i].totalTries === 0) {
+						if (ran === 0) {
+							mctsPlayNextMove(tboard, tscores,
+								this.children[i].lastMove, this.dTurn);
+							this.children[i].backPropogate(mctsSimulate(
+								this.children[i], tboard, tscores));
+							return;
+						}
+						ran--;
+					}
+			} else {
+				var bestChild = this.children[0],
+					bestPotential =
+						mctsChildPotential(this.children[0],
+							this.totalTries, this.turn), potential;
+
+				// propResult(this, this.children[0]);
+
+				for (i = 1; i < this.children.length; i++) {
+					// propResult(this, this.children[i]);
+					potential = mctsChildPotential(this.children[i], this.totalTries, this.turn);
+					if (potential > bestPotential) {
+						bestPotential = potential;
+						bestChild = this.children[i];
+					}
+				}
+				mctsPlayNextMove(tboard, tscores,
+					bestChild.lastMove, this.dTurn);
+				bestChild.chooseChild(tboard, tscores);
+			}
+		}
+	}
+
+	backPropogate(simulation) {
+		if (simulation === 1)
+			this.hits++;
+		else if (simulation === -1)
+			this.misses++;
+		this.totalTries++;
+		if (this.parent !== null)
+			this.parent.backPropogate(simulation *
+				(this.parent.turn === this.turn ? 1:-1));
+	}
+}
+
+function mctsChildPotential(child, t, turn) {
+	var w = child.misses - child.hits;
+	if (child.turn === turn)
+		w = -w;
+	var n = child.totalTries;
+	var c = expansionConstant;
+
+	return w / n + c * Math.sqrt(Math.log(t) / n);
+}
+
+function simpleBoardCopy(board) {
+	var simpleCopy = new Array(5);
+	for (var i = 0; i < 5; i++) {
+		simpleCopy[i] = new Array(5);
+		for (var a = 0; a < 5; a++)
+			simpleCopy[i][a] = board[i][a];
+	}
+	return simpleCopy;
+}
+
+function simpleScoresCopy(scores) {
+	var simpleCopy = new Array(numPlayers);
+	for (var i = 0; i < numPlayers; i++)
+		simpleCopy[i] = scores[i];
+	return simpleCopy;
+}
+
+function playAiMove() {
+	runMcts(timeToThink);
+	var bestMove = getBestMoveMcts();
+	playMoveGlobal(bestMove);
+}
+
+function runMcts(time) {
+	if (!globalRoot)
+		globalRoot = createMctsRoot();
+	var startTime = new Date().getTime();
+	while ((new Date().getTime() - startTime) / 1E3 < time)
+		for (var i = 0; i < 2000; i++)
+			globalRoot.chooseChild(simpleBoardCopy(board),
+				simpleScoresCopy(scores));
+	while (globalRoot.totalTries < 25)
+		globalRoot.chooseChild(simpleBoardCopy(board),
+			simpleScoresCopy(scores));
+	console.log("Total Simulations: " + globalRoot.totalTries);
+}
+
+function getBestMoveMcts() {
+	var bestChild = mostTriedChild(globalRoot, null);
+	if (!bestChild)
+		return -1;
+	return bestChild.lastMove;
+}
+
+function mostTriedChild(root, exclude=null) {
+	var mostTrials = -1, child = null;
+	if (!root.children)
+		return null;
+	for (var i = 0; i < root.children.length; i++)
+		if (root.children[i] !== exclude && root.children[i].totalTries > mostTrials) {
+			mostTrials = root.children[i].totalTries;
+			child = root.children[i];
+		}
+	return child;
+}
+
+function mctsGetNextRoot(move) {
+	if (!globalRoot || !globalRoot.children)
+		return null;
+	for (var i = 0; i < globalRoot.children.length; i++)
+		if (globalRoot.children[i].lastMove === move)
+			return globalRoot.children[i];
+	return null;
+}
