@@ -124,6 +124,7 @@ function drawOuterBoard() {
 	lineMove(-1, 0);
 	lineMove(1/5, 0.5);
 	lineMove(-1/5, 0.5);
+	lineMove(1, 0);
 
 	// Center Square
 	brushMove(3, 3);
@@ -131,6 +132,7 @@ function drawOuterBoard() {
 	lineMove(0, -1);
 	lineMove(-1, 0);
 	lineMove(0, 1);
+	lineMove(1, 0);
 
 	brush.strokeStyle = 'black';
 	brush.lineWidth = squareWidth / 25;
@@ -182,6 +184,7 @@ function drawInnerBoard() {
 	lineMove(-1, 0);
 	lineMove(1/9, 1/6);
 	lineMove(-1/9, 1/6);
+	lineMove(1, 0);
 
 	// Center Square
 	brushMove(2 + 2/3, 2 + 2/3);
@@ -189,6 +192,7 @@ function drawInnerBoard() {
 	lineMove(0, -5/3);
 	lineMove(-5/3, 0);
 	lineMove(0, 5/3);
+	lineMove(5/3, 0);
 
 	brush.strokeStyle = 'black';
 	brush.lineWidth = 1;
