@@ -572,8 +572,7 @@ class MctsNode {
 		this.turn = turn;
 		this.dTurn = dTurn; // playingTurn
 		this.lastMove = lastMove;
-		this.hits = 0;
-		this.misses = 0;
+		this.hits = [0, 0, 0, 0];
 		this.totalTries = 0;
 		this.children = [];
 		this.result = 10; // never gonna happen
@@ -632,9 +631,7 @@ class MctsNode {
 	}
 
 	backPropogate(result) {
-		if (this.turn === result)
-			this.hits++;
-		else this.misses++;
+		this.hits[result]++;
 		this.totalTries++;
 		if (this.parent !== null)
 			this.parent.backPropogate(result);
@@ -642,9 +639,7 @@ class MctsNode {
 }
 
 function mctsChildPotential(child, t, turn) {
-	var w = child.misses - child.hits;
-	if (child.turn === turn)
-		w = -w;
+	var w = child.hits[turn];
 	var n = child.totalTries;
 	var c = expansionConstant;
 
@@ -729,13 +724,9 @@ function mctsGetNextRoot(move) {
 }
 
 function resultCertainty(root) {
-	if (root.totalTries > (root.hits + root.misses) * 3)
-		return 1 - (root.hits + root.misses) / root.totalTries;
-	else if (root.hits > root.misses)
-		return (root.hits - root.misses) / root.totalTries;
-	else if (root.hits < root.misses)
-		return (root.misses - root.hits) / root.totalTries;
-	else return 1 - (root.hits + root.misses) / root.totalTries;
+	if (root.hits[globalTurn] > root.totalTries / 2)
+		return root.hits[globalTurn] / root.totalTries;
+	return 1 - root.hits[globalTurn] / root.totalTries;
 }
 
 function updateAnalysis() {
@@ -745,7 +736,7 @@ function updateAnalysis() {
 	analElem.innerHTML = "Analysis: Depth-" + range[1] + " Result-" +
 		range[2] + " Certainty-" + (globalRoot && globalRoot.totalTries > 0 ?
 		(resultCertainty(globalRoot) * 100).toFixed(0):"0") + "%";
-	numTrialsElem.innerHTML = "Trials: " + globalRoot.totalTries;
+	numTrialsElem.innerHTML = "Trials: " + numberWithCommas(globalRoot.totalTries);
 }
 
 function getMctsDepthRange() {
