@@ -450,6 +450,7 @@ function playMoveGlobal(move) {
 			scores[result]++;
 		if (scores[result] === 5) {
 			over = true;
+			stopPonder();
 			setTimeout(function () {
 				switch (result) {
 					case 0:
@@ -782,6 +783,7 @@ function startPonder() {
 		while ((new Date().getTime() - startTime) < 30 && !stopChoose) {
 			globalRoot.chooseChild(simpleBoardCopy(board),
 				simpleScoresCopy(scores));
+			tempCount++;
 		}
 		if (numChoose3 && (tempCount < numChoose3 / 10 || tempCount < numChoose2 / 10 || tempCount < numChoose1 / 10))
 			stopChoose = true;
