@@ -293,7 +293,7 @@ function drawBoard(hover=[[-1, -1], -1]) {
 	drawOuterBoard();
 	drawInnerBoard();
 	if (hover[1] !== -1)
-		drawPiece(hover[0][0], hover[0][1], globalTurn);
+		drawPiece(hover[0][0], hover[0][1], playingTurn);
 	drawScores();
 }
 
