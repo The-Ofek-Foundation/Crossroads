@@ -255,7 +255,7 @@ function drawScores() {
 	brush.fillStyle = 'blue';
 	for (var i = 0; i < scores[1]; i++)
 		brush.fillRect(boardWidth - 15/14 * squareWidth,
-			3 * squareWidth + squareWidth / 13 * 2 * (i + 1),
+			3 * squareWidth + squareWidth / 13 * 2 * (5 - i),
 			-squareWidth * 4/5, squareWidth / 13);
 
 	for (var i = 0; i < 5; i++)
@@ -268,7 +268,7 @@ function drawScores() {
 
 	brush.fillStyle = 'yellow';
 	for (var i = 0; i < scores[2]; i++)
-		brush.fillRect(3 * squareWidth + squareWidth / 13 * 2 * (i + 1),
+		brush.fillRect(3 * squareWidth + squareWidth / 13 * 2 * (5 - i),
 			15/14 * squareWidth, squareWidth / 13, squareWidth * 4/5);
 
 	for (var i = 0; i < 5; i++)
