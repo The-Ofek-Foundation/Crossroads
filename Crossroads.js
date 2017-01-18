@@ -1,9 +1,12 @@
 var docWidth, docHeight;
 var boardWidth, squareWidth;
 var board;
+var globalTurn;
+var numPlayers = 2;
 
 var boardui = getElemId("board");
 var brush = boardui.getContext("2d");
+var hoveredMove;
 
 function pageReady() {
 	resizeBoard();
@@ -22,6 +25,7 @@ function resizeBoard() {
 	setElemStyle(boardui, 'left', (docWidth - boardWidth) / 2 + "px")
 	boardui.setAttribute('width', boardWidth);
 	boardui.setAttribute('height', boardWidth);
+	wrapperLeft = boardui.offsetLeft;
 	squareWidth = boardWidth / 7;
 }
 
@@ -37,6 +41,8 @@ function newGame() {
 		for (var a = 0; a < board[i].length; a++)
 			board[i][a] = 0;
 	}
+	hoveredMove = [[-1, -1], -1];
+	globalTurn = 0;
 
 	drawBoard();
 }
@@ -76,8 +82,8 @@ function drawOuterBoard() {
 	lineMove(0, -1);
 	lineMove(1, 0);
 	lineMove(0, 1);
-	lineMove(0.5, -1/3);
-	lineMove(0.5, 1/3);
+	lineMove(0.5, -1/5);
+	lineMove(0.5, 1/5);
 	lineMove(0, -1);
 	lineMove(1, 0);
 
@@ -86,8 +92,8 @@ function drawOuterBoard() {
 	lineMove(-1, 0);
 	lineMove(0, -1);
 	lineMove(1, 0);
-	lineMove(-1/3, -0.5);
-	lineMove(1/3, -0.5);
+	lineMove(-1/5, -0.5);
+	lineMove(1/5, -0.5);
 	lineMove(-1, 0);
 	lineMove(0, -1);
 
@@ -96,8 +102,8 @@ function drawOuterBoard() {
 	lineMove(0, 1);
 	lineMove(-1, 0);
 	lineMove(0, -1);
-	lineMove(-0.5, 1/3);
-	lineMove(-0.5, -1/3);
+	lineMove(-0.5, 1/5);
+	lineMove(-0.5, -1/5);
 	lineMove(0, 1);
 	lineMove(-1, 0);
 
@@ -106,8 +112,8 @@ function drawOuterBoard() {
 	lineMove(1, 0);
 	lineMove(0, 1);
 	lineMove(-1, 0);
-	lineMove(1/3, 0.5);
-	lineMove(-1/3, 0.5);
+	lineMove(1/5, 0.5);
+	lineMove(-1/5, 0.5);
 
 	// Center Square
 	brushMove(3, 3);
@@ -180,10 +186,59 @@ function drawInnerBoard() {
 	brush.closePath();
 }
 
-function drawBoard(hover=-1) {
+function drawHover(hover) {
+	brush.beginPath();
+	brush.arc((hover[0][0] + 0.5) * squareWidth,
+		(hover[0][1] + 0.5) * squareWidth, 2 * squareWidth / 5,
+		0, 2 * Math.PI);
+
+	switch (globalTurn) {
+		case 0:
+			brush.fillStyle = 'red';
+			break;
+		case 1:
+			brush.fillStyle = 'green';
+			break;
+		case 2:
+			brush.fillStyle = 'blue';
+			break;
+		case 3:
+			brush.fillStyle = 'yellow';
+			break;
+	}
+
+	brush.lineWidth = 1;
+	brush.strokeStyle = 'black';
+	brush.stroke();
+	brush.fill();
+}
+
+function drawBoard(hover=[[-1, -1], -1]) {
 	clearBoard();
 	drawOuterBoard();
 	drawInnerBoard();
-	// if (hover !== -1)
-	// 	drawHover(hover);
+	if (hover[1] !== -1)
+		drawHover(hover);
 }
+
+function getMove(mouseX, mouseY) {
+	var tmove =
+		[parseInt(mouseX / squareWidth), parseInt(mouseY / squareWidth)];
+	if (tmove[0] === 0 && tmove[1] === 2)
+		return [tmove, 0];
+	if (tmove[0] === 4 && tmove[1] === 0)
+		return [tmove, 1];
+	if (tmove[0] === 6 && tmove[1] === 4)
+		return [tmove, 2];
+	if (tmove[0] === 2 && tmove[1] === 6)
+		return [tmove, 3];
+	return [[-1, -1], -1];
+}
+
+boardui.addEventListener('mousemove', function (e) {
+	var move = getMove(e.pageX - wrapperLeft, e.pageY - wrapperTop);
+	if (move[1] !== hoveredMove[1]) {
+		hoveredMove = move;
+		drawBoard(move);
+	}
+});
