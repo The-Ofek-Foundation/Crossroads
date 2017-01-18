@@ -13,6 +13,7 @@ var expansionConstant = 1.5;
 
 var boardui = getElemId("board");
 var brush = boardui.getContext("2d");
+var analElem = getElemId('anal'), numTrialsElem = getElemId('num-trials');
 var brushX, brushY;
 var hoveredMove;
 
@@ -61,6 +62,8 @@ function newGame() {
 	over = false;
 	globalRoot = createMctsRoot();
 
+	if (aiTurn === globalTurn || aiTurn === 4)
+		setTimeout(playAiMove, 25);
 	drawBoard();
 }
 
@@ -305,6 +308,9 @@ function drawBoard(hover=[[-1, -1], -1]) {
 	if (hover[1] !== -1)
 		drawPiece(hover[0][0], hover[0][1], playingTurn);
 	drawScores();
+
+	if (aiTurn !== -1)
+		updateAnalysis();
 }
 
 function playMove(tboard, tmove, turn) {
@@ -341,16 +347,16 @@ function getResult(tboard, tmove) {
 	var turn = -2;
 	switch (tmove) {
 		case 0:
-			for (var i = 0; turn !== -1 && i < 4; i++, turn = tboard[i][1]);
+			for (var i = 0; turn !== -1 && i < 3; i++, turn = tboard[i][1]);
 			return turn;
 		case 1:
-			for (var a = 0; turn !== -1 && a < 4; a++, turn = tboard[3][a]);
+			for (var a = 0; turn !== -1 && a < 3; a++, turn = tboard[3][a]);
 			return turn;
 		case 2:
-			for (var i = 4; turn !== -1 && i > 0; i--, turn = tboard[i][3]);
+			for (var i = 4; turn !== -1 && i > 1; i--, turn = tboard[i][3]);
 			return turn;
 		case 3:
-			for (var a = 4; turn !== -1 && a > 0; a--, turn = tboard[1][a]);
+			for (var a = 4; turn !== -1 && a > 1; a--, turn = tboard[1][a]);
 			return turn;
 	}
 }
@@ -402,10 +408,12 @@ function playMoveGlobal(move) {
 		}
 		incrementTurn(move);
 	}
-	globalRoot = mctsGetNextRoot(move);
-	if (!over && aiTurn !== 'none' &&
-		(globalTurn === aiTurn || aiTurn === 'all'))
-		setTimeout(playAiMove, 25);
+	if (aiTurn !== -1) {
+		globalRoot = mctsGetNextRoot(move);
+		if (!over &&
+			(globalTurn === aiTurn || aiTurn === 4))
+			setTimeout(playAiMove, 25);
+	}
 	drawBoard();
 }
 
@@ -466,6 +474,7 @@ function createMctsRoot() {
 function mctsSimulate(father, tboard, tscores) {
 	if (father.result !== 10)
 		return father.result;
+
 
 	var turn = father.turn;
 
@@ -626,6 +635,18 @@ function getBestMoveMcts() {
 	return bestChild.lastMove;
 }
 
+function leastTriedChild(root) {
+	var leastTrials = root.totalTries + 1, child = null;
+	if (!root.children)
+		return null;
+	for (var i = 0; i < root.children.length; i++)
+		if (root.children[i].totalTries < leastTrials) {
+			leastTrials = root.children[i].totalTries;
+			child = root.children[i];
+		}
+	return child;
+}
+
 function mostTriedChild(root, exclude=null) {
 	var mostTrials = -1, child = null;
 	if (!root.children)
@@ -645,4 +666,39 @@ function mctsGetNextRoot(move) {
 		if (globalRoot.children[i].lastMove === move)
 			return globalRoot.children[i];
 	return null;
+}
+
+function resultCertainty(root) {
+	if (root.totalTries > (root.hits + root.misses) * 3)
+		return 1 - (root.hits + root.misses) / root.totalTries;
+	else if (root.hits > root.misses)
+		return (root.hits - root.misses) / root.totalTries;
+	else if (root.hits < root.misses)
+		return (root.misses - root.hits) / root.totalTries;
+	else return 1 - (root.hits + root.misses) / root.totalTries;
+}
+
+function updateAnalysis() {
+	if (!globalRoot || globalRoot.totalTries === 0)
+		return;
+	var range = getMctsDepthRange();
+	analElem.innerHTML = "Analysis: Depth-" + range[1] + " Result-" +
+		range[2] + " Certainty-" + (globalRoot && globalRoot.totalTries > 0 ?
+		(resultCertainty(globalRoot) * 100).toFixed(0):"0") + "%";
+	numTrialsElem.innerHTML = "Trials: " + globalRoot.totalTries;
+}
+
+function getMctsDepthRange() {
+	var root, range = new Array(3);
+	for (range[0] = -1, root = globalRoot; root && root.children; range[0]++, root = leastTriedChild(root));
+	for (range[1] = -1, root = globalRoot; root && root.children; range[1]++, root = mostTriedChild(root));
+	root = globalRoot;
+	if (root.totalTries > (root.hits + root.misses) * 3)
+		range[2] = -1;
+	else if ((root.hits > root.misses) === globalTurn)
+		range[2] = -1;
+	else if ((root.hits < root.misses) === globalTurn)
+		range[2] = -1;
+	else range[2] = -1;
+	return range;
 }
