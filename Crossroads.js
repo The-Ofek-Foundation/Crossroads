@@ -2,11 +2,11 @@ var docWidth, docHeight;
 var boardWidth, squareWidth;
 var board, scores;
 var globalTurn, playingTurn;
-var numPlayers = 2;
+var numPlayers;
 var over;
-var omniscientView = false;
-var timeToThink = 1;
-var aiTurn = 1;
+var drawStyle;
+var timeToThink;
+var aiTurn;
 var prevMove;
 
 var globalRoot;
@@ -75,6 +75,7 @@ function newGame() {
 		setTimeout(playAiMove, 25);
 	drawBoard();
 
+	numChoose1 = numChoose2 = numChoose3 = lnc1 = lnc2 = lnc3 = stopChoose = false;
 	stopPonder();
 	if (ponder)
 		startPonder();
@@ -156,10 +157,14 @@ function drawOuterBoard() {
 	lineMove(0, 1);
 	lineMove(1, 0);
 
+	brush.closePath();
 	brush.strokeStyle = 'black';
 	brush.lineWidth = squareWidth / 25;
 	brush.stroke();
-	brush.closePath();
+	if (drawStyle === 'peep') {
+		brush.fillStyle = 'white';
+		brush.fill();
+	}
 }
 
 function drawInnerBoard() {
@@ -357,7 +362,7 @@ function drawBoard(hover=[[-1, -1], -1]) {
 	clearBoard();
 	if (prevMove !== -1)
 		drawHighlight(prevMove);
-	if (omniscientView)
+	if (drawStyle === 'omniscient' || drawStyle === 'peep')
 		drawPieces();
 	drawOuterBoard();
 	drawInnerBoard();
@@ -464,6 +469,7 @@ function playMoveGlobal(move) {
 		}
 		incrementTurn(move);
 	}
+	numChoose1 = numChoose2 = numChoose3 = stopChoose = false;
 	if (aiTurn !== -1) {
 		globalRoot = mctsGetNextRoot(move);
 		if (!over &&
@@ -750,15 +756,9 @@ function updateAnalysis() {
 function getMctsDepthRange() {
 	var root, range = new Array(3);
 	for (range[0] = -1, root = globalRoot; root && root.children; range[0]++, root = leastTriedChild(root));
-	for (range[1] = -1, root = globalRoot; root && root.children; range[1]++, root = mostTriedChild(root));
-	root = globalRoot;
-	if (root.totalTries > (root.hits + root.misses) * 3)
-		range[2] = -1;
-	else if ((root.hits > root.misses) === globalTurn)
-		range[2] = -1;
-	else if ((root.hits < root.misses) === globalTurn)
-		range[2] = -1;
-	else range[2] = -1;
+	for (range[1] = -1, root = globalRoot; root && root.children; range[1]++, root = mostTriedChild(root))
+		if (root.result !== 10)
+			range[2] = root.result;
 	return range;
 }
 
@@ -826,7 +826,7 @@ function getNewSettings() {
 		'aiTurn': getInputValue('ai-turn'),
 		'numPlayers': getInputValue('num-players'),
 		'timeToThink': getInputValue('time-to-think'),
-		'omniscientView': getInputValue('omniscient-view'),
+		'drawStyle': getInputValue('draw-style'),
 	}
 }
 
@@ -835,7 +835,7 @@ function populateSettingsForm(settings) {
 	setInputValue('ai-turn', aiTurn);
 	setInputValue('num-players', numPlayers);
 	setInputValue('time-to-think', timeToThink);
-	setInputValue('omniscient-view', omniscientView);
+	setInputValue('draw-style', drawStyle);
 }
 
 function getSettings() {
@@ -843,5 +843,5 @@ function getSettings() {
 	ponder = gameSettings.getOrSet('ponder', false);
 	numPlayers = gameSettings.getOrSet('numPlayers', 2);
 	timeToThink = gameSettings.getOrSet('timeToThink', 2);
-	omniscientView = gameSettings.getOrSet('omniscientView', true);
+	drawStyle = gameSettings.getOrSet('drawStyle', 'peep');
 }
