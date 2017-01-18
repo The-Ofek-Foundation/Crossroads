@@ -2,7 +2,7 @@ var docWidth, docHeight;
 var boardWidth, squareWidth;
 var board, scores;
 var globalTurn, playingTurn;
-var numPlayers = 2;
+var numPlayers = 4;
 var over;
 var omniscientView = true;
 
@@ -232,6 +232,60 @@ function drawPieces() {
 				drawPiece(i + 1, a + 1, board[i][a]);
 }
 
+function drawScores() {
+
+	brush.strokeStyle = 'black';
+	brush.lineWidth = 1;
+
+	brush.fillStyle = 'red';
+	for (var i = 0; i < scores[0]; i++)
+		brush.fillRect(15/14 * squareWidth,
+			3 * squareWidth + squareWidth / 13 * 2 * (i + 1),
+			squareWidth * 4/5, squareWidth / 13);
+
+	for (var i = 0; i < 5; i++)
+		brush.strokeRect(15/14 * squareWidth,
+			3 * squareWidth + squareWidth / 13 * 2 * (i + 1),
+			squareWidth * 4/5, squareWidth / 13);
+
+	brush.fillStyle = 'blue';
+	for (var i = 0; i < scores[1]; i++)
+		brush.fillRect(boardWidth - 15/14 * squareWidth,
+			3 * squareWidth + squareWidth / 13 * 2 * (i + 1),
+			-squareWidth * 4/5, squareWidth / 13);
+
+	for (var i = 0; i < 5; i++)
+		brush.strokeRect(boardWidth - 15/14 * squareWidth,
+			3 * squareWidth + squareWidth / 13 * 2 * (i + 1),
+			-squareWidth * 4/5, squareWidth / 13);
+
+	if (numPlayers < 3)
+		return;
+
+	brush.fillStyle = 'yellow';
+	for (var i = 0; i < scores[2]; i++)
+		brush.fillRect(3 * squareWidth + squareWidth / 13 * 2 * (i + 1),
+			15/14 * squareWidth, squareWidth / 13, squareWidth * 4/5);
+
+	for (var i = 0; i < 5; i++)
+		brush.strokeRect(3 * squareWidth + squareWidth / 13 * 2 * (i + 1),
+			15/14 * squareWidth, squareWidth / 13, squareWidth * 4/5);
+
+	if (numPlayers < 4)
+		return;
+
+	brush.fillStyle = 'lightgray';
+	for (var i = 0; i < scores[3]; i++)
+		brush.fillRect(3 * squareWidth + squareWidth / 13 * 2 * (i + 1),
+			boardWidth - 15/14 * squareWidth, squareWidth / 13,
+			-squareWidth * 4/5);
+
+	for (var i = 0; i < 5; i++)
+		brush.strokeRect(3 * squareWidth + squareWidth / 13 * 2 * (i + 1),
+			boardWidth - 15/14 * squareWidth, squareWidth / 13,
+			-squareWidth * 4/5);
+}
+
 function drawBoard(hover=[[-1, -1], -1]) {
 	clearBoard();
 	if (omniscientView)
@@ -240,6 +294,7 @@ function drawBoard(hover=[[-1, -1], -1]) {
 	drawInnerBoard();
 	if (hover[1] !== -1)
 		drawPiece(hover[0][0], hover[0][1], globalTurn);
+	drawScores();
 }
 
 function playMove(tboard, tmove, turn) {
@@ -308,9 +363,27 @@ boardui.addEventListener('mousedown', function (e) {
 	else {
 		if (result !== -1)
 			scores[result]++;
+		if (scores[result] === 5) {
+			over = true;
+			setTimeout(function () {
+				switch (result) {
+					case 0:
+						alert("Red Wins!");
+						break;
+					case 1:
+						alert("Blue Wins!");
+						break;
+					case 2:
+						alert("Yellow Wins!");
+						break;
+					case 3:
+						alert("Light Gray Wins!");
+						break;
+				}
+			}, 100);
+		}
 		incrementTurn(move);
 	}
-	console.log(scores);
 
 	e.preventDefault();
 	drawBoard();
