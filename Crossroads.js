@@ -4,12 +4,15 @@ var board, scores;
 var globalTurn, playingTurn;
 var numPlayers = 2;
 var over;
-var omniscientView = true;
+var omniscientView = false;
 var timeToThink = 1;
 var aiTurn = 1;
+var prevMove;
 
 var globalRoot;
 var expansionConstant = 1.5;
+var numChoose1, numChoose2, numChoose3, lnc1, lnc2, lnc3, stopChoose;
+var ponder, pondering;
 
 var boardui = getElemId("board");
 var brush = boardui.getContext("2d");
@@ -20,6 +23,7 @@ var hoveredMove;
 function pageReady() {
 	resizeBoard();
 	newGame();
+	setTimeout(resizeGameSettingsTable, 0);
 }
 
 function resizeBoard() {
@@ -36,6 +40,7 @@ function resizeBoard() {
 	boardui.setAttribute('height', boardWidth);
 	wrapperLeft = boardui.offsetLeft;
 	squareWidth = boardWidth / 7;
+	resizeGameSettingsTable();
 }
 
 function onResize() {
@@ -53,6 +58,9 @@ function newGame() {
 
 	board[0][1] = board[4][3] = 4;
 
+	getSettings();
+	populateSettingsForm(gameSettings.getSettings());
+
 	scores = new Array(numPlayers);
 	for (var i = 0; i < scores.length; i++)
 		scores[i] = 0;
@@ -61,10 +69,15 @@ function newGame() {
 	globalTurn = playingTurn = 0;
 	over = false;
 	globalRoot = createMctsRoot();
+	prevMove = -1;
 
-	if (aiTurn === globalTurn || aiTurn === 4)
+	if (aiTurn == globalTurn || aiTurn == 4)
 		setTimeout(playAiMove, 25);
 	drawBoard();
+
+	stopPonder();
+	if (ponder)
+		startPonder();
 }
 
 function clearBoard() {
@@ -299,8 +312,51 @@ function drawScores() {
 			-squareWidth * 4/5);
 }
 
+function drawHighlight(move) {
+	brush.beginPath();
+	switch (move) {
+		case 0:
+			brushMove(9/10, 3);
+			lineMove(1/10, 0);
+			lineMove(1/5, 0.5);
+			lineMove(-1/5, 0.5);
+			lineMove(-1/10, 0);
+			lineMove(0, -1);
+			break;
+		case 1:
+			brushMove(4, 9/10);
+			lineMove(0, -1/10);
+			lineMove(0.5, -1/5);
+			lineMove(0.5, 1/5);
+			lineMove(0, 1/10);
+			lineMove(-1, 0);
+			break;
+		case 2:
+			brushMove(61/10, 4);
+			lineMove(-1/10, 0);
+			lineMove(-1/5, -0.5);
+			lineMove(1/5, -0.5);
+			lineMove(1/10, 0);
+			lineMove(0, -1);
+			break;
+		case 3:
+			brushMove(2, 61/10);
+			lineMove(0, 1/10);
+			lineMove(0.5, 1/5);
+			lineMove(0.5, -1/5);
+			lineMove(0, -1/10);
+			lineMove(-1, 0);
+			break;
+	}
+	brush.closePath();
+	brush.fillStyle = 'yellow';
+	brush.fill();
+}
+
 function drawBoard(hover=[[-1, -1], -1]) {
 	clearBoard();
+	if (prevMove !== -1)
+		drawHighlight(prevMove);
 	if (omniscientView)
 		drawPieces();
 	drawOuterBoard();
@@ -411,9 +467,10 @@ function playMoveGlobal(move) {
 	if (aiTurn !== -1) {
 		globalRoot = mctsGetNextRoot(move);
 		if (!over &&
-			(globalTurn === aiTurn || aiTurn === 4))
+			(globalTurn == aiTurn || aiTurn == 4))
 			setTimeout(playAiMove, 25);
 	}
+	prevMove = move;
 	drawBoard();
 }
 
@@ -443,9 +500,9 @@ boardui.addEventListener('mousemove', function (e) {
 
 document.addEventListener('keypress', function (event) {
 	switch (event.which) {
-		// case 115: case 83: // s
-		// 	showSettingsForm();
-		// 	break;
+		case 115: case 83: // s
+			showSettingsForm();
+			break;
 		case 110: case 78: // n
 			newGame();
 			break;
@@ -713,4 +770,78 @@ function speedTest(numSimulations) {
 				simpleScoresCopy(scores));
 	var elapsedTime = (new Date().getTime() - startTime) / 1E3;
 	console.log(numberWithCommas(Math.round(numSimulations / elapsedTime)) + ' simulations per second.');
+}
+
+var numPonders = 0;
+function startPonder() {
+	pondering = setInterval(function() {
+		if (!globalRoot)
+			globalRoot = createMCTSRoot();
+		var startTime = new Date().getTime();
+		var tempCount = 0;
+		while ((new Date().getTime() - startTime) < 30 && !stopChoose) {
+			globalRoot.chooseChild(simpleBoardCopy(board),
+				simpleScoresCopy(scores));
+		}
+		if (numChoose3 && (tempCount < numChoose3 / 10 || tempCount < numChoose2 / 10 || tempCount < numChoose1 / 10))
+			stopChoose = true;
+		else {
+			numChoose3 = numChoose2;
+			numChoose2 = numChoose1;
+			numChoose1 = tempCount;
+		}
+		numPonders++;
+		updateAnalysis();
+	}, 1);
+}
+
+function stopPonder() {
+	clearInterval(pondering);
+}
+
+getElemId('done').addEventListener('click', function (event) {
+	var settings = getNewSettings();
+	gameSettings.setSettings(settings);
+	hideSettingsForm();
+	newGame();
+});
+
+getElemId('cancel').addEventListener('click', function (event) {
+	hideSettingsForm();
+	populateSettingsForm(gameSettings.getSettings());
+});
+
+if (getElemId('save'))
+	getElemId('save').addEventListener('click', function (event) {
+		var settings = getNewSettings();
+		gameSettings.setSettings(settings);
+		gameSettings.saveSettings(settings);
+		hideSettingsForm();
+		newGame();
+	});
+
+function getNewSettings() {
+	return {
+		'ponder': getInputValue('ponder'),
+		'aiTurn': getInputValue('ai-turn'),
+		'numPlayers': getInputValue('num-players'),
+		'timeToThink': getInputValue('time-to-think'),
+		'omniscientView': getInputValue('omniscient-view'),
+	}
+}
+
+function populateSettingsForm(settings) {
+	setInputValue('ponder', ponder);
+	setInputValue('ai-turn', aiTurn);
+	setInputValue('num-players', numPlayers);
+	setInputValue('time-to-think', timeToThink);
+	setInputValue('omniscient-view', omniscientView);
+}
+
+function getSettings() {
+	aiTurn = gameSettings.getOrSet('aiTurn', '1');
+	ponder = gameSettings.getOrSet('ponder', false);
+	numPlayers = gameSettings.getOrSet('numPlayers', 2);
+	timeToThink = gameSettings.getOrSet('timeToThink', 2);
+	omniscientView = gameSettings.getOrSet('omniscientView', true);
 }
