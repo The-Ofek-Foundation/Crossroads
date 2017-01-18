@@ -396,3 +396,14 @@ boardui.addEventListener('mousemove', function (e) {
 		drawBoard(move);
 	}
 });
+
+document.addEventListener('keypress', function (event) {
+	switch (event.which) {
+		// case 115: case 83: // s
+		// 	showSettingsForm();
+		// 	break;
+		case 110: case 78: // n
+			newGame();
+			break;
+	}
+});
