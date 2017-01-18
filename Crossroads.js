@@ -480,7 +480,7 @@ function mctsSimulate(father, tboard, tscores) {
 
 	for (var i = 0; i < tscores.length; i++)
 		if (tscores[i] === 5)
-			return father.result = i === turn ? 1:-1;
+			return father.result = i;
 
 	var dTurn = father.dTurn, result;
 
@@ -492,7 +492,7 @@ function mctsSimulate(father, tboard, tscores) {
 			if (result !== -1) {
 				tscores[result]++;
 				if (tscores[result] === 5)
-					return result === father.turn ? 1:-1;
+					return result;
 			}
 			turn = dTurn = (turn + 1) % numPlayers;
 		}
@@ -514,17 +514,21 @@ class MctsNode {
 		this.hits = 0;
 		this.misses = 0;
 		this.totalTries = 0;
-		this.hasChildren = false;
 		this.children = [];
 		this.result = 10; // never gonna happen
-		this.countUnexplored = 0;
+		this.countUnexplored = -1;
 	}
 
 	chooseChild(tboard, tscores) {
-		if (this.hasChildren === false) {
+		for (var i = 0; i < tscores.length; i++)
+			if (tscores[i] === 5) {
+				this.result = i;
+				break;
+			}
+		if (this.result === 10 && this.countUnexplored === -1) {
 			this.hasChildren = true;
 			this.children = mctsGetChildren(this, tboard, this.turn);
-			this.countUnexplored = this.children.length;
+			this.countUnexplored = 4;
 		}
 		if (this.result !== 10) // leaf node
 			this.backPropogate(this.result);
@@ -569,15 +573,13 @@ class MctsNode {
 		}
 	}
 
-	backPropogate(simulation) {
-		if (simulation === 1)
+	backPropogate(result) {
+		if (this.turn === result)
 			this.hits++;
-		else if (simulation === -1)
-			this.misses++;
+		else this.misses++;
 		this.totalTries++;
 		if (this.parent !== null)
-			this.parent.backPropogate(simulation *
-				(this.parent.turn === this.turn ? 1:-1));
+			this.parent.backPropogate(result);
 	}
 }
 
@@ -701,4 +703,14 @@ function getMctsDepthRange() {
 		range[2] = -1;
 	else range[2] = -1;
 	return range;
+}
+
+function speedTest(numSimulations) {
+	globalRoot = createMctsRoot();
+	var startTime = new Date().getTime();
+	for (var i = 0; i < numSimulations; i++)
+		globalRoot.chooseChild(simpleBoardCopy(board),
+				simpleScoresCopy(scores));
+	var elapsedTime = (new Date().getTime() - startTime) / 1E3;
+	console.log(numberWithCommas(Math.round(numSimulations / elapsedTime)) + ' simulations per second.');
 }
