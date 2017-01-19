@@ -3,14 +3,14 @@ var boardWidth, squareWidth;
 var board, scores;
 var globalTurn, playingTurn;
 var numPlayers;
-var over;
+var over, overOutput = true;
 var drawStyle;
 var timeToThink;
 var aiTurn;
 var prevMove;
 
 var globalRoot;
-var expansionConstant = 1.5;
+var expansionConstant;
 var numChoose1, numChoose2, numChoose3, lnc1, lnc2, lnc3, stopChoose;
 var ponder, pondering;
 
@@ -60,6 +60,15 @@ function newGame() {
 
 	getSettings();
 	populateSettingsForm(gameSettings.getSettings());
+
+	switch (numPlayers) {
+		case 2:
+			expansionConstant = 1.5;
+			break;
+		case 3: case 4:
+			expansionConstant = 4;
+			break;
+	}
 
 	scores = new Array(numPlayers);
 	for (var i = 0; i < scores.length; i++)
@@ -449,31 +458,32 @@ function playMoveGlobal(move) {
 		if (result !== -1)
 			scores[result]++;
 		if (scores[result] === 5) {
-			over = true;
+			over = result;
 			stopPonder();
-			setTimeout(function () {
-				switch (result) {
-					case 0:
-						alert("Red Wins!");
-						break;
-					case 1:
-						alert("Blue Wins!");
-						break;
-					case 2:
-						alert("Yellow Wins!");
-						break;
-					case 3:
-						alert("Light Gray Wins!");
-						break;
-				}
-			}, 100);
+			if (overOutput)
+				setTimeout(function () {
+					switch (result) {
+						case 0:
+							alert("Red Wins!");
+							break;
+						case 1:
+							alert("Blue Wins!");
+							break;
+						case 2:
+							alert("Yellow Wins!");
+							break;
+						case 3:
+							alert("Light Gray Wins!");
+							break;
+					}
+				}, 100);
 		}
 		incrementTurn(move);
 	}
 	numChoose1 = numChoose2 = numChoose3 = stopChoose = false;
 	if (aiTurn !== -1) {
 		globalRoot = mctsGetNextRoot(move);
-		if (!over &&
+		if (over === false &&
 			(globalTurn == aiTurn || aiTurn == 4))
 			setTimeout(playAiMove, 25);
 	}
@@ -484,7 +494,7 @@ function playMoveGlobal(move) {
 boardui.addEventListener('mousedown', function (e) {
 	if (e.which === 3)
 		return;
-	if (over) {
+	if (over !== false) {
 		alert("The game is already over!");
 		return;
 	}
@@ -665,8 +675,7 @@ function simpleScoresCopy(scores) {
 
 function playAiMove() {
 	runMcts(timeToThink);
-	var bestMove = getBestMoveMcts();
-	playMoveGlobal(bestMove);
+	playMoveGlobal(getBestMoveMcts());
 }
 
 function runMcts(time) {
@@ -714,12 +723,12 @@ function mostTriedChild(root, exclude=null) {
 	return child;
 }
 
-function mctsGetNextRoot(move) {
-	if (!globalRoot || !globalRoot.children)
+function mctsGetNextRoot(move, root=globalRoot) {
+	if (!root || !root.children)
 		return null;
-	for (var i = 0; i < globalRoot.children.length; i++)
-		if (globalRoot.children[i].lastMove === move)
-			return globalRoot.children[i];
+	for (var i = 0; i < root.children.length; i++)
+		if (root.children[i].lastMove === move)
+			return root.children[i];
 	return null;
 }
 
@@ -831,4 +840,84 @@ function getSettings() {
 	numPlayers = gameSettings.getOrSet('numPlayers', 2);
 	timeToThink = gameSettings.getOrSet('timeToThink', 2);
 	drawStyle = gameSettings.getOrSet('drawStyle', 'peep');
+}
+
+function sleep(ms) {
+	return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function testExpansionConstants(c1, c2, numPlayers, numTrials, timeToThink, output) {
+	var v1 = v2 = 0;
+	overOutput = false;
+	ponder = false;
+	aiTurn = -1;
+
+	for (var I = 0; I < numTrials; I++) {
+		newGame();
+
+		var gRoots = new Array(numPlayers);
+		for (r of gRoots)
+			r = createMctsRoot();
+
+		while (over === false) {
+			var startTime = new Date().getTime();
+			var r = gRoots[globalTurn];
+			expansionConstant = globalTurn === (I % numPlayers) ? c1:c2;
+			if (!r)
+				r = createMctsRoot();
+			while ((new Date().getTime() - startTime) / 1E3 < timeToThink)
+				for (var i = 0; i < 100; i++)
+					r.chooseChild(simpleBoardCopy(board),
+						simpleScoresCopy(scores));
+			var bestChild = mostTriedChild(r, null);
+			var bestMove = bestChild.lastMove;
+			playMoveGlobal(bestMove);
+
+			for (root of gRoots) {
+				root = mctsGetNextRoot(bestMove, root);
+				if (root === null)
+					root = createMctsRoot();
+			}
+
+		}
+		console.log(over, I % numPlayers);
+		if (over === (I % numPlayers)) {
+			v1++;
+			if (output)
+				console.log("c1 wins");
+		} else {
+			v2++;
+			if (output)
+				console.log("c2 wins");
+		}
+	}
+	console.log(c1 + ": " + v1 + " and " + c2 + ": " + v2);
+	overOutput = true;
+	return [v1, v2];
+}
+
+function findBestExpansionConstant(seed, numPlayers, timeToThink, bound, numSimulations, prollyGreater=true) {
+	console.log("!!!");
+	console.log("Best constant: ", seed);
+	console.log("Bound: ", bound);
+	console.log("!!!");
+
+	if (seed < 0)
+		return;
+
+	var delta1, delta2;
+
+	var round1 = testExpansionConstants(seed, prollyGreater ? (seed + bound):(seed - bound), numPlayers, numSimulations, timeToThink, false);
+	if (round1[1] > round1[0])
+		findBestExpansionConstant(prollyGreater ? (seed + bound):(seed - bound), numPlayers, timeToThink, bound / 2, numSimulations, true);
+	else {
+		delta1 = round1[0] - round1[1];
+		var round2 = testExpansionConstants(seed, prollyGreater ? (seed - bound):(seed + bound), numPlayers, numSimulations, timeToThink, false);
+		if (round2[1] > round2[0])
+			findBestExpansionConstant(prollyGreater ? (seed - bound):(seed + bound), numPlayers, timeToThink, bound / 2, numSimulations, true);
+		else {
+			delta2 = round2[0] - round2[1];
+			findBestExpansionConstant(seed, numPlayers, timeToThink, bound / 2, numSimulations, delta1 < delta2 === prollyGreater);
+		}
+	}
 }
