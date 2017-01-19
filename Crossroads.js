@@ -880,7 +880,6 @@ async function testExpansionConstants(c1, c2, numPlayers, numTrials, timeToThink
 			}
 
 		}
-		console.log(over, I % numPlayers);
 		if (over === (I % numPlayers)) {
 			v1++;
 			if (output)
@@ -893,7 +892,7 @@ async function testExpansionConstants(c1, c2, numPlayers, numTrials, timeToThink
 	}
 	console.log(c1 + ": " + v1 + " and " + c2 + ": " + v2);
 	overOutput = true;
-	return [v1, v2];
+	return [v1, v2 / (numPlayers - 1)];
 }
 
 function findBestExpansionConstant(seed, numPlayers, timeToThink, bound, numSimulations, prollyGreater=true) {
