@@ -453,6 +453,7 @@ function getMove(mouseX, mouseY) {
 
 function playMoveGlobal(move) {
 	hoveredMove = [[-1, -1], -1];
+	var tempDrawStyle = drawStyle;
 	var result = playMove(board, move, playingTurn);
 	if (result === 4)
 		playingTurn = 4;
@@ -479,6 +480,7 @@ function playMoveGlobal(move) {
 							break;
 					}
 				}, 100);
+			drawStyle = 'omniscient';
 		}
 		incrementTurn(move);
 	}
@@ -491,6 +493,8 @@ function playMoveGlobal(move) {
 	}
 	prevMove = move;
 	drawBoard();
+	if (over !== false)
+		drawStyle = tempDrawStyle;
 }
 
 boardui.addEventListener('mousedown', function (e) {
