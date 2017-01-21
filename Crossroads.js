@@ -48,7 +48,7 @@ function onResize() {
 	drawBoard();
 }
 
-function newGame() {
+function newGame(updateSettings=true) {
 	board = new Array(5);
 	for (var i = 0; i < board.length; i++) {
 		board[i] = new Array(5);
@@ -58,8 +58,10 @@ function newGame() {
 
 	board[0][1] = board[4][3] = 4;
 
-	getSettings();
-	populateSettingsForm(gameSettings.getSettings());
+	if (updateSettings) {
+		getSettings();
+		populateSettingsForm(gameSettings.getSettings());
+	}
 
 	switch (numPlayers) {
 		case 2:
@@ -846,14 +848,16 @@ function sleep(ms) {
 	return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function testExpansionConstants(c1, c2, numPlayers, numTrials, timeToThink, output) {
+function testExpansionConstants(c1, c2, nP, numTrials, timeToThink, output) {
 	var v1 = v2 = 0;
 	overOutput = false;
 	ponder = false;
 	aiTurn = -1;
+	numPlayers = nP;
 
 	for (var I = 0; I < numTrials; I++) {
-		newGame();
+		newGame(false);
+		console.log("move counter");
 
 		var gRoots = new Array(numPlayers);
 		for (r of gRoots)
@@ -895,6 +899,7 @@ async function testExpansionConstants(c1, c2, numPlayers, numTrials, timeToThink
 	return [v1, v2 / (numPlayers - 1)];
 }
 
+// findBestExpansionConstant(3, 3, 0.1, 2, 100);
 function findBestExpansionConstant(seed, numPlayers, timeToThink, bound, numSimulations, prollyGreater=true) {
 	console.log("!!!");
 	console.log("Best constant: ", seed);
