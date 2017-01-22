@@ -67,10 +67,15 @@ function newGame(updateSettings=true) {
 		case 2:
 			expansionConstant = 1.5;
 			break;
-		case 3: case 4:
+		case 3:
 			if (timeToThink <= 0.1)
 				expansionConstant = 0.875; // ~0.0625
-			else expansionConstant = 1;
+			else expansionConstant = 1.38671875; // ~0.001953125
+			break;
+		case 4:
+			if (timeToThink <= 0.1)
+				expansionConstant = 0.875;
+			else expansionConstant = 1.296875; // ~0.0078125
 			break;
 	}
 
@@ -908,6 +913,7 @@ function testExpansionConstants(c1, c2, nP, numTrials, timeToThink, output) {
 
 // findBestExpansionConstant(0.875, 3, 0.1, 0.0625, 100, true);
 // findBestExpansionConstant(1.5, 3, 1, 0.5, 100, false);
+
 function findBestExpansionConstant(seed, numPlayers, timeToThink, bound, numSimulations, prollyGreater=true) {
 	console.log("!!!");
 	console.log("Best constant: ", seed);
