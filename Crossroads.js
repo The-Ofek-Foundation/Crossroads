@@ -68,7 +68,9 @@ function newGame(updateSettings=true) {
 			expansionConstant = 1.5;
 			break;
 		case 3: case 4:
-			expansionConstant = 4;
+			if (timeToThink <= 0.1)
+				expansionConstant = 0.875; // ~0.0625
+			else expansionConstant = 1;
 			break;
 	}
 
@@ -655,11 +657,10 @@ class MctsNode {
 }
 
 function mctsChildPotential(child, t, turn) {
-	var w = child.hits[turn];
 	var n = child.totalTries;
-	var c = expansionConstant;
 
-	return w / n + c * Math.sqrt(Math.log(t) / n);
+	return child.hits[turn] / n + expansionConstant *
+		Math.sqrt(Math.log(t) / n);
 }
 
 function simpleBoardCopy(board) {
@@ -859,11 +860,11 @@ function testExpansionConstants(c1, c2, nP, numTrials, timeToThink, output) {
 	aiTurn = -1;
 	numPlayers = nP;
 
+	var gRoots = new Array(numPlayers);
 	for (var I = 0; I < numTrials; I++) {
 		newGame(false);
 		console.log("move counter");
 
-		var gRoots = new Array(numPlayers);
 		for (r of gRoots)
 			r = createMctsRoot();
 
@@ -897,13 +898,16 @@ function testExpansionConstants(c1, c2, nP, numTrials, timeToThink, output) {
 			if (output)
 				console.log("c2 wins");
 		}
+		for (r of gRoots)
+			r = null;
 	}
 	console.log(c1 + ": " + v1 + " and " + c2 + ": " + v2);
 	overOutput = true;
 	return [v1, v2 / (numPlayers - 1)];
 }
 
-// findBestExpansionConstant(3, 3, 0.1, 2, 100);
+// findBestExpansionConstant(0.875, 3, 0.1, 0.0625, 100, true);
+// findBestExpansionConstant(1.5, 3, 1, 0.5, 100, false);
 function findBestExpansionConstant(seed, numPlayers, timeToThink, bound, numSimulations, prollyGreater=true) {
 	console.log("!!!");
 	console.log("Best constant: ", seed);
