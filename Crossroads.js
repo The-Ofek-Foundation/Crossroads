@@ -70,12 +70,16 @@ function newGame(updateSettings=true) {
 		case 3:
 			if (timeToThink <= 0.1)
 				expansionConstant = 0.875; // ~0.0625
+			else if (timeToThink <= 0.5)
+				expansionConstant = 0.9375; // ~0.03125
 			else expansionConstant = 1.38671875; // ~0.001953125
 			break;
 		case 4:
 			if (timeToThink <= 0.1)
 				expansionConstant = 0.7596869468688965; // ~2.384185791015625e-7
-			else expansionConstant = 1.296875; // ~0.0078125
+			else if (timeToThink <= 1)
+				expansionConstant = 1.296875; // ~0.0078125
+			else expansionConstant = 1.21875;
 			break;
 	}
 
