@@ -23,7 +23,7 @@ var hoveredMove;
 function pageReady() {
 	resizeBoard();
 	newGame();
-	setTimeout(resizeGameSettingsTable, 0);
+	setTimeout(resizeSettingsTable, 0);
 }
 
 function resizeBoard() {
@@ -40,7 +40,7 @@ function resizeBoard() {
 	boardui.setAttribute('height', boardWidth);
 	wrapperLeft = boardui.offsetLeft;
 	squareWidth = boardWidth / 7;
-	resizeGameSettingsTable();
+	resizeSettingsTable();
 }
 
 function onResize() {
