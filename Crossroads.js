@@ -29,16 +29,17 @@ function pageReady() {
 function resizeBoard() {
 	docWidth = getElemWidth(contentWrapper);
 	docHeight = getElemHeight(contentWrapper);
-	wrapperTop = contentWrapper.offsetTop;
 
 	boardWidth = docWidth < docHeight ? docWidth:docHeight;
 
 	setElemWidth(boardui, boardWidth);
 	setElemHeight(boardui, boardWidth);
 	setElemStyle(boardui, 'left', (docWidth - boardWidth) / 2 + "px")
+	setElemStyle(boardui, 'top', (docHeight - boardWidth) / 2 + "px")
 	boardui.setAttribute('width', boardWidth);
 	boardui.setAttribute('height', boardWidth);
 	wrapperLeft = boardui.offsetLeft;
+	wrapperTop = boardui.offsetTop;
 	squareWidth = boardWidth / 7;
 	resizeSettingsTable();
 }
@@ -451,6 +452,7 @@ function incrementTurn() {
 function getMove(mouseX, mouseY) {
 	var tmove =
 		[parseInt(mouseX / squareWidth), parseInt(mouseY / squareWidth)];
+
 	if (tmove[0] === 0 && tmove[1] === 2)
 		return [tmove, 0];
 	if (tmove[0] === 4 && tmove[1] === 0)
